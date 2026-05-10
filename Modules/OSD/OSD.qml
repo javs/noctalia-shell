@@ -45,6 +45,11 @@ Variants {
     readonly property bool isMuted: AudioService.muted
     readonly property real currentInputVolume: AudioService.inputVolume
     readonly property bool isInputMuted: AudioService.inputMuted
+    readonly property string currentDeviceName: {
+      if (AudioService.sink)
+        return AudioService.sink.description || AudioService.sink.name || "";
+      return "";
+    }
     readonly property real epsilon: 0.005
 
     // LockKey OSD enabled state (reactive to settings)
@@ -414,8 +419,9 @@ Variants {
 
       // Dimensions
       readonly property bool isShortMode: root.currentOSDType === OSD.Type.LockKey
+      readonly property bool hasDescription: root.currentOSDType === OSD.Type.Volume && root.currentDeviceName
       readonly property int longHWidth: Math.round(320 * Style.uiScaleRatio)
-      readonly property int longHHeight: Math.round(72 * Style.uiScaleRatio)
+      readonly property int longHHeight: Math.round(72 * (hasDescription ? 1.25 : 1) * Style.uiScaleRatio)
       readonly property int shortHWidth: Math.round(180 * Style.uiScaleRatio)
       readonly property int longVWidth: Math.round(80 * Style.uiScaleRatio)
       readonly property int longVHeight: Math.round(280 * Style.uiScaleRatio)
@@ -599,69 +605,31 @@ Variants {
 
         Component {
           id: horizontalContent
-          RowLayout {
+          ColumnLayout {
             anchors.fill: parent
             anchors.leftMargin: Style.marginL
             anchors.rightMargin: Style.marginL
             spacing: Style.marginM
 
-            TextMetrics {
-              id: percentageMetrics
-              font.family: Settings.data.ui.fontFixed
-              font.pointSize: Style.fontSizeS * (Settings.data.ui.fontFixedScale * Style.uiScaleRatio)
-              text: "150%"
-            }
-
-            // Common Icon for all types
-            NIcon {
-              icon: root.getIcon()
-              color: root.getIconColor()
-              pointSize: Style.fontSizeXL
+            RowLayout {
+              //anchors.fill: parent
               Layout.alignment: Qt.AlignVCenter
+              spacing: Style.marginM
 
-              Behavior on color {
-                ColorAnimation {
-                  duration: Style.animationNormal
-                  easing.type: Easing.InOutQuad
-                }
+              TextMetrics {
+                id: percentageMetrics
+                font.family: Settings.data.ui.fontFixed
+                font.pointSize: Style.fontSizeS * (Settings.data.ui.fontFixedScale * Style.uiScaleRatio)
+                text: "150%"
               }
-            }
 
-            // Lock Key Status Text (replaces progress bar)
-            NText {
-              visible: root.currentOSDType === OSD.Type.LockKey
-              text: root.getDisplayPercentage()
-              color: root.getProgressColor()
-              pointSize: Style.fontSizeS
-              elide: Text.ElideNone
-              Layout.fillWidth: true
-              horizontalAlignment: Text.AlignHCenter
-              Layout.alignment: Qt.AlignVCenter
-            }
+              // Common Icon for all types
+              NIcon {
+                icon: root.getIcon()
+                color: root.getIconColor()
+                pointSize: Style.fontSizeXL
+                Layout.alignment: Qt.AlignVCenter
 
-            // Progress Bar for Volume/Brightness
-            Rectangle {
-              visible: root.currentOSDType !== OSD.Type.LockKey
-              Layout.fillWidth: true
-              Layout.alignment: Qt.AlignVCenter
-              height: panel.barThickness
-              radius: Math.min(Style.iRadiusL, panel.barThickness / 2)
-              color: Color.mSurfaceVariant
-
-              Rectangle {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: parent.width * Math.min(1.0, root.getCurrentValue() / root.getMaxValue())
-                radius: parent.radius
-                color: root.getProgressColor()
-
-                Behavior on width {
-                  NumberAnimation {
-                    duration: Style.animationNormal
-                    easing.type: Easing.InOutQuad
-                  }
-                }
                 Behavior on color {
                   ColorAnimation {
                     duration: Style.animationNormal
@@ -669,22 +637,80 @@ Variants {
                   }
                 }
               }
+
+              // Lock Key Status Text (replaces progress bar)
+              NText {
+                visible: root.currentOSDType === OSD.Type.LockKey
+                text: root.getDisplayPercentage()
+                color: root.getProgressColor()
+                pointSize: Style.fontSizeS
+                elide: Text.ElideNone
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                Layout.alignment: Qt.AlignVCenter
+              }
+
+              // Progress Bar for Volume/Brightness
+              Rectangle {
+                visible: root.currentOSDType !== OSD.Type.LockKey
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                height: panel.barThickness
+                radius: Math.min(Style.iRadiusL, panel.barThickness / 2)
+                color: Color.mSurfaceVariant
+
+                Rectangle {
+                  anchors.left: parent.left
+                  anchors.top: parent.top
+                  anchors.bottom: parent.bottom
+                  width: parent.width * Math.min(1.0, root.getCurrentValue() / root.getMaxValue())
+                  radius: parent.radius
+                  color: root.getProgressColor()
+
+                  Behavior on width {
+                    NumberAnimation {
+                      duration: Style.animationNormal
+                      easing.type: Easing.InOutQuad
+                    }
+                  }
+                  Behavior on color {
+                    ColorAnimation {
+                      duration: Style.animationNormal
+                      easing.type: Easing.InOutQuad
+                    }
+                  }
+                }
+              }
+
+              // Percentage Text for Volume/Brightness
+              NText {
+                visible: root.currentOSDType !== OSD.Type.LockKey
+                text: root.getDisplayPercentage()
+                color: Color.mOnSurface
+                pointSize: Style.fontSizeS
+                family: Settings.data.ui.fontFixed
+                Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                horizontalAlignment: Text.AlignRight
+                verticalAlignment: Text.AlignVCenter
+                Layout.fillWidth: false
+                Layout.preferredWidth: Math.ceil(percentageMetrics.width) + Math.round(8 * Style.uiScaleRatio)
+                Layout.maximumWidth: Math.ceil(percentageMetrics.width) + Math.round(8 * Style.uiScaleRatio)
+                Layout.minimumWidth: Math.ceil(percentageMetrics.width)
+              }
             }
 
-            // Percentage Text for Volume/Brightness
             NText {
-              visible: root.currentOSDType !== OSD.Type.LockKey
-              text: root.getDisplayPercentage()
-              color: Color.mOnSurface
-              pointSize: Style.fontSizeS
+              visible: hasDescription
+              text: root.currentDeviceName
+              color: Color.mOnSurfaceVariant
+              pointSize: Style.fontSizeXS
               family: Settings.data.ui.fontFixed
-              Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
-              horizontalAlignment: Text.AlignRight
+              horizontalAlignment: Text.AlignHCenter
               verticalAlignment: Text.AlignVCenter
-              Layout.fillWidth: false
-              Layout.preferredWidth: Math.ceil(percentageMetrics.width) + Math.round(8 * Style.uiScaleRatio)
-              Layout.maximumWidth: Math.ceil(percentageMetrics.width) + Math.round(8 * Style.uiScaleRatio)
-              Layout.minimumWidth: Math.ceil(percentageMetrics.width)
+              Layout.fillWidth: true
+              wrapMode: Text.WordWrap
+              elide: Text.ElideRight
+              Layout.preferredHeight: Math.round(16 * Style.uiScaleRatio)
             }
           }
         }
